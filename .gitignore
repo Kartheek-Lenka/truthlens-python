@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+env/
+venv/
+.venv/
+pip-wheel-metadata/
+
+# Environment variables / secrets
+.env
+.env.*
+secrets.toml
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Database (local SQLite)
+database/*.db
+database/*.db-journal
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Logs
+*.log
