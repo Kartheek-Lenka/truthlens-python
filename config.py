@@ -14,19 +14,19 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-# ── Gemini API ─────────────────────────────────────────────────────────────────
-# Set via environment variable:  GEMINI_API_KEY=<your_key>
-GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL: str = "gemini-2.5-flash-preview-05-20"  # latest fast model
-GEMINI_TIMEOUT: int = 30  # seconds
+# ── ML Model Configuration ────────────────────────────────────────────────────
+# Local ML model for offline deepfake detection
+MODEL_TYPE: str = "mobilenet_v3"  # Transfer learning model type
+MODEL_SIZE: str = "mobile"  # "mobile" for speed, "standard" for accuracy
+INFERENCE_TIMEOUT: int = 30  # seconds
 
 # ── Frame Extraction ──────────────────────────────────────────────────────────
-FRAME_JPEG_QUALITY: int = 90           # 0-100 — higher = better quality, larger payload
-FRAME_MAX_DIM: int = 1024              # Resize longest edge to this before sending to Gemini
+FRAME_JPEG_QUALITY: int = 90           # 0-100 — higher = better quality
+FRAME_MAX_DIM: int = 1024              # Resize longest edge to this
 
-# ── Local Model Simulation ────────────────────────────────────────────────────
-LOCAL_MODEL_MIN_LATENCY_MS: int = 300   # Simulate fast GPU inference
-LOCAL_MODEL_MAX_LATENCY_MS: int = 1200  # Simulate slow CPU inference
+# ── Detection Settings ─────────────────────────────────────────────────────────
+CONFIDENCE_THRESHOLD: float = 0.5      # Threshold for fake classification (0-1)
+MIN_CONFIDENCE_PERCENT: int = 40       # Minimum reporting confidence
 
 # ── Database ──────────────────────────────────────────────────────────────────
 DB_PATH: str = os.path.join(os.path.dirname(__file__), "database", "truthlens.db")
@@ -36,5 +36,5 @@ APP_TITLE: str = "TruthLens 🔍"
 APP_ICON: str = "🔍"
 APP_DESCRIPTION: str = (
     "AI-powered deepfake & manipulated video detection — "
-    "powered by MobileNetV3 simulation + Gemini 2.5 Flash"
+    "Offline ML-powered analysis using transfer learning (MobileNetV3)"
 )

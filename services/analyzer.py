@@ -1,19 +1,18 @@
 """
 services/analyzer.py — Core Analysis Orchestrator
-Routes frames through Gemini API (if key present) → local model (fallback).
-Also measures CPU time and memory usage per analysis run.
+Routes frames through local ML model for offline deepfake detection.
+Measures CPU time and memory usage per analysis run.
 """
 
 import logging
 import time
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import numpy as np
 
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from services.gemini_service import analyze_with_gemini
-from services.local_model import run_local_model
+from services.ml_model import predict_deepfake
 from utils.metrics import get_cpu_time, get_memory_usage
 
 logger = logging.getLogger(__name__)
@@ -27,74 +26,60 @@ class AnalysisResult(TypedDict):
     reasoning: str
     cpu_time: str         # e.g. "423.1 ms"
     memory: str           # e.g. "128.4 MB"
-    engine: str           # "gemini" | "local" | "local_fallback"
+    engine: str           # "ml_model"
 
 
 # ── Orchestrator ───────────────────────────────────────────────────────────────
 
-def analyze_frame(
-    frame: np.ndarray,
-    api_key: Optional[str] = None,
-) -> AnalysisResult:
+def analyze_frame(frame: np.ndarray) -> AnalysisResult:
     """
     Analyze a single video frame for deepfake / AI-manipulation.
+    
+    Uses local ML model for completely offline detection.
+    No external API calls or dependencies.
 
-    Decision logic:
-        1. If api_key is provided (non-empty) → attempt Gemini API analysis.
-           - On success: return Gemini result.
-           - On failure: log the error and fall back to local model.
-        2. If no api_key → use local model directly (offline mode).
-
-    Performance telemetry (CPU time, memory) is measured for every path.
+    Performance telemetry (CPU time, memory) is measured for the analysis.
 
     Args:
-        frame:   BGR numpy array from extract_frame().
-        api_key: Optional Gemini API key string.
+        frame: BGR numpy array from extract_frame().
 
     Returns:
         AnalysisResult dict — always populated, never raises.
     """
     start_time = time.perf_counter()
-    engine: str = "local"
+    engine: str = "ml_model"
 
-    logger.info(
-        "Starting analysis — engine: %s",
-        "gemini (primary)" if api_key else "local (offline)",
-    )
+    logger.info("Starting analysis with local ML model (offline)")
 
-    # ── Path A: Gemini API ─────────────────────────────────────────────────
-    if api_key and api_key.strip():
-        try:
-            gemini_result = analyze_with_gemini(image=frame, api_key=api_key.strip())
-            end_time = time.perf_counter()
-            engine = "gemini"
+    try:
+        # ── ML Model Inference ─────────────────────────────────────────────
+        ml_result = predict_deepfake(frame)
+        end_time = time.perf_counter()
 
-            return AnalysisResult(
-                isFake=gemini_result["isFake"],
-                confidence=gemini_result["confidence"],
-                reasoning=gemini_result["reasoning"],
-                cpu_time=get_cpu_time(start_time, end_time),
-                memory=get_memory_usage(),
-                engine=engine,
-            )
+        logger.info(
+            "Analysis complete — isFake: %s, confidence: %d%%",
+            ml_result["isFake"],
+            ml_result["confidence"],
+        )
 
-        except Exception as exc:
-            logger.warning(
-                "Gemini API failed (%s). Falling back to local model …", exc
-            )
-            engine = "local_fallback"
-            # Reset timer so fallback latency is measured independently
-            start_time = time.perf_counter()
+        return AnalysisResult(
+            isFake=ml_result["isFake"],
+            confidence=ml_result["confidence"],
+            reasoning=ml_result["reasoning"],
+            cpu_time=get_cpu_time(start_time, end_time),
+            memory=get_memory_usage(),
+            engine=engine,
+        )
 
-    # ── Path B: Local model (offline / fallback) ───────────────────────────
-    local_result = run_local_model(frame)
-    end_time = time.perf_counter()
-
-    return AnalysisResult(
-        isFake=local_result["isFake"],
-        confidence=local_result["confidence"],
-        reasoning=local_result["reasoning"],
-        cpu_time=get_cpu_time(start_time, end_time),
-        memory=get_memory_usage(),
-        engine=engine,
-    )
+    except Exception as exc:
+        logger.error("Analysis failed: %s", exc)
+        end_time = time.perf_counter()
+        
+        return AnalysisResult(
+            isFake=False,
+            confidence=50,
+            reasoning="Analysis encountered an error. Please try again.",
+            cpu_time=get_cpu_time(start_time, end_time),
+            memory=get_memory_usage(),
+            engine=engine,
+        )

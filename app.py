@@ -18,7 +18,7 @@ import streamlit as st
 # ── Path fix so relative imports work when launched from any CWD ───────────────
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import APP_TITLE, APP_ICON, APP_DESCRIPTION, GEMINI_API_KEY
+from config import APP_TITLE, APP_ICON, APP_DESCRIPTION
 from utils.video_utils import extract_frame
 from services.analyzer import analyze_frame, AnalysisResult
 from database.db import save_result, get_history, clear_history
@@ -254,22 +254,12 @@ with st.sidebar:
     st.markdown("### ⚙️ Configuration")
     st.markdown("---")
 
-    # API Key input (masked)
-    sidebar_api_key = st.text_input(
-        "Gemini API Key",
-        value=GEMINI_API_KEY or "",
-        type="password",
-        placeholder="AIza…  (leave blank for offline mode)",
-        help=(
-            "Enter your Google Gemini API key to enable cloud-based analysis. "
-            "Leave blank for local offline simulation."
-        ),
+    st.info(
+        "🟢 **Offline Mode Active**\n\n"
+        "TruthLens is running in fully offline mode using a local ML model. "
+        "No internet connection required. All analysis is performed locally on your device.",
+        icon="🔒"
     )
-
-    if sidebar_api_key:
-        st.success("🟢 Cloud mode (Gemini 2.5 Flash)")
-    else:
-        st.warning("🟡 Offline mode (local simulation)")
 
     st.markdown("---")
     st.markdown("### 📊 Analysis History")
@@ -287,10 +277,13 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(
         "<div style='font-size:0.75rem;color:#8b949e;line-height:1.6'>"
-        "TruthLens v1.0<br>"
+        "TruthLens v2.0<br>"
         "Deepfake detection using<br>"
-        "MobileNetV3 simulation +<br>"
-        "Gemini 2.5 Flash<br><br>"
+        "Local ML model<br>"
+        "(MobileNetV3 backbone)<br><br>"
+        "✅ Fully Offline<br>"
+        "🔒 Privacy-First<br>"
+        "⚡ Fast & Efficient<br><br>"
         "⚠️ For research use only."
         "</div>",
         unsafe_allow_html=True,
@@ -357,7 +350,7 @@ if analyze_btn and uploaded_file is not None:
             frame = extract_frame(tmp_path)
             st.session_state.frame_img = frame
 
-            result = analyze_frame(frame=frame, api_key=sidebar_api_key or None)
+            result = analyze_frame(frame=frame)
             st.session_state.result = result
 
             # Persist to SQLite
@@ -434,16 +427,8 @@ with col_right:
 
         # ── Engine badge ──────────────────────────────────────────────────
         engine = result["engine"]
-        badge_class = (
-            "badge-gemini" if engine == "gemini"
-            else "badge-fallback" if engine == "local_fallback"
-            else "badge-local"
-        )
-        engine_label = {
-            "gemini": "☁️ Gemini 2.5 Flash",
-            "local": "💻 Local Model (Offline)",
-            "local_fallback": "⚡ Local Model (Fallback)",
-        }.get(engine, engine)
+        badge_class = "badge-local"
+        engine_label = "🧠 Local ML Model (Offline)"
 
         st.markdown(
             f'<span class="engine-badge {badge_class}">{engine_label}</span>',
